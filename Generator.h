@@ -6,7 +6,15 @@
 #include <vector>
 
 #include "FieldMapGenerator.h"
+<<<<<<< HEAD
 
+=======
+typedef struct _randmap{
+    int id;
+    int captcha;
+    std::string  data;
+}Randmap;
+>>>>>>> 8877b10bc23c7871b13677cb9afc00721702ccf6
 
 
 class Generator:boost::asio::coroutine{
@@ -21,9 +29,14 @@ public:
     );
     void HandleTask(std::string task);
     void creatMap(int type,int num);
+<<<<<<< HEAD
     void sendMap(std::string & rmap, int type);
     void clearbuf();
     void reconnect();
+=======
+    void sendMap(std::vector<Randmap> &maps);
+    void clearbuf();
+>>>>>>> 8877b10bc23c7871b13677cb9afc00721702ccf6
 protected:
 private:
     typedef boost::asio::ip::tcp tcp;

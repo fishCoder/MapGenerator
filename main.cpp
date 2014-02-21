@@ -13,12 +13,21 @@ void mapgenerate(){
 
 int main()
 {
+<<<<<<< HEAD
  //   boost::thread th(mapgenerate);
  //   boost::thread th1(mapgenerate);
  //   th1.join();
   //  th.join();
 
     mapgenerate();
+=======
+    boost::thread th(mapgenerate);
+    boost::thread th1(mapgenerate);
+    th1.join();
+    th.join();
+
+
+>>>>>>> 8877b10bc23c7871b13677cb9afc00721702ccf6
     cout << "Hello world!" << endl;
     return 0;
 }

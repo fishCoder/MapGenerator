@@ -14,11 +14,19 @@ FieldMapGenerator::FieldMapGenerator():kFieldMapParam(),
                                         fieldmapGenerator(),
                                         map_obj_logic_obj()
 {
+<<<<<<< HEAD
     kFieldMapParam.Load("/home/lin/Desktop/Public_FieldMapData.csv");
 	kBuildingBlock.Load("/home/lin/Desktop/Public_BuildingBlockInfo.csv");
 	kMapLogicTemplateTable.Load("/home/lin/Desktop/Map_LogicData.csv");
 	kLootLotteryData.Load("/home/lin/Desktop/Loot_Template.csv");
 	kNpcTemplateTalbe.Load("/home/lin/Desktop/Npc_Template.csv");
+=======
+    kFieldMapParam.Load("/home/flb/Desktop/Public_FieldMapData.csv");
+	kBuildingBlock.Load("/home/flb/Desktop/Public_BuildingBlockInfo.csv");
+	kMapLogicTemplateTable.Load("/home/flb/Desktop/Map_LogicData.csv");
+	kLootLotteryData.Load("/home/flb/Desktop/Loot_Template.csv");
+	kNpcTemplateTalbe.Load("/home/flb/Desktop/Npc_Template.csv");
+>>>>>>> 8877b10bc23c7871b13677cb9afc00721702ccf6
 
 	map_obj_logic_obj.Init(kLootLotteryData, kMapLogicTemplateTable, kNpcTemplateTalbe);
 }
