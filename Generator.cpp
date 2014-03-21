@@ -6,12 +6,13 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <boost/lexical_cast.hpp>
 #include <vector>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+#include <unistd.h>
 
 #include "RandomMapGenerator.h"
-#include <boost/date_time/posix_time/posix_time.hpp>
 #define bufsize 1024
 
 //char readbuf[1024];

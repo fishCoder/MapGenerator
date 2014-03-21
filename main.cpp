@@ -11,6 +11,7 @@ using namespace std;
 
 int main(int agrc ,char * argv[])
 {
+
     INI ini("gen.ini");
     string file_path = ini.get("gen.csv");
     string redishost = ini.get("gen.redisip");
