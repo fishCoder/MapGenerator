@@ -166,6 +166,7 @@ void Generator::reconnect(){
 
     root["type"] = 1;
     root["id"]   = id;
+    root["first"] = 0;
     task_ok = writer.write(root);
 
     readbuf = new char[1024];

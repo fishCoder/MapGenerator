@@ -25,6 +25,7 @@ int main(int agrc ,char * argv[])
 
     boost::asio::io_service io_ser;
     Generator * en= new Generator(io_ser,dip,dport,redishost,redisport,durtime);
+    en->set_dur_time(durtime);
     io_ser.run();
 
  /*   boost::thread_group threadGroup;
