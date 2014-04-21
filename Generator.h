@@ -34,9 +34,12 @@ protected:
 private:
     typedef boost::asio::ip::tcp tcp;
     int dur_time;
-    std::string task_ok;
     int id;
-    char * readbuf;
+    boost::uint64_t map_instance_id;
+    char  readbuf[1024];
+    char  sendbuf[1024];
+    unsigned int send_len;
+    unsigned int read_len;
     boost::asio::io_service & io_service;
     boost::shared_ptr<redis::client> rc;
     boost::shared_ptr<tcp::socket> psocket;

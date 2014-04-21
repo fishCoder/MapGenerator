@@ -36,17 +36,24 @@ void Generator::operator()(
     boost::system::error_code ec,
     std::size_t length){
     if(!ec){
+
         reenter(this){
             while(true){
                 //receive task from diaspatcher
                 clearbuf();
                 std::cout << "async_read_some" << std::endl;
-                yield psocket->async_read_some(boost::asio::buffer(readbuf,bufsize),*this);
+                //读头
+
+                psocket->receive(boost::asio::buffer(&read_len,sizeof(unsigned int)));
+                std::cout << "async_read_head : " << read_len << std::endl;
+                //读包体
+                psocket->receive(boost::asio::buffer(readbuf,read_len));
+                std::cout << "async_read_body : " << readbuf << std::endl;
+
                 //start task
                 HandleTask(readbuf);
                 //notify diaspatcher that i done
-                std::cout << "task_ok:" << task_ok << std::endl;
-                yield psocket->async_write_some( boost::asio::buffer(task_ok.c_str(),task_ok.length()),*this);
+                yield psocket->async_send(boost::asio::buffer(sendbuf,send_len),*this);
 
             }
         }
@@ -72,34 +79,42 @@ void Generator::clearbuf(){
     memset(readbuf,'\0',1024);
 }
 
-void Generator::creatMap(int type,int num){
+void Generator::creatMap(int map_type,int num){
     int data_size = 0;
     for(int i=0; i<num ;  i++){
         std::string map_data;
         std::string npc_data;
         ptime gen_start = microsec_clock::local_time();
-        HeroX::RandomMapGenerator::Generate(rand(), type, map_data, npc_data);
+        HeroX::RandomMapGenerator::Generate(rand(), map_type, map_data, npc_data);
         ptime gen_end   = microsec_clock::local_time();
         time_duration gen_duration = gen_end - gen_start;
         int gen_duration_ = gen_duration.total_microseconds()/1000;
-        is_over_time(gen_duration_,type);
+        is_over_time(gen_duration_,map_type);
         std::cout << "[gen time :" << gen_duration_ << " ms" <<"]"<< std::endl;
 
-        sendMap(map_data,npc_data,type);
+        sendMap(map_data,npc_data,map_type);
         data_size += (map_data.length()+npc_data.length());
 
 
     }
     Json::Value root;
     Json::FastWriter writer;
-
+    /**
+    *type 调度器根据type以确定该消息包如何处理 1表示生成器完成一个任务
+    *id 表示该生存器的在服务器的id
+    *map 表示地图的类型
+    */
     root["type"] = 1;
     root["id"]   = id;
-    root["map"]  = type;
+    root["map"]  = map_type;
     root["amount"] = num;
     root["size"] = data_size;
 
-    task_ok=writer.write(root);
+    std::string task_ok=writer.write(root);
+    unsigned int len = task_ok.length();
+    memcpy(sendbuf,&len,sizeof(unsigned int));
+    memcpy(sendbuf+sizeof(unsigned int),task_ok.c_str(),len);
+    send_len =  len+sizeof(unsigned int);
 }
 void Generator::is_over_time(int gen_duration,int map_type_id){
     if(gen_duration<this->dur_time)return;
@@ -107,17 +122,25 @@ void Generator::is_over_time(int gen_duration,int map_type_id){
     Json::Value root;
     Json::FastWriter writer;
 
+    /**
+    *type = 2 表示生成一张地图所用时间超过设定的时间，将这个消息反馈给调度器以记录
+    *duration 生成一张地图的耗时
+    */
+
     root["type"] = 2;
     root["id"]   = id;
     root["map"]  = map_type_id;
     root["duration"] = gen_duration;
 
     std::string task_ok=writer.write(root);
-    std::cout << "task_ok:" << task_ok << std::endl;
-    psocket->async_write_some( boost::asio::buffer(task_ok.c_str(),task_ok.length()),boost::bind(&Generator::write_handler,this,_1,_2));
+    unsigned int len = task_ok.length();
+    memcpy(sendbuf,&len,sizeof(unsigned int));
+    memcpy(sendbuf+sizeof(unsigned int),task_ok.c_str(),len);
+    send_len = len+sizeof(unsigned int);
+    psocket->async_send( boost::asio::buffer(sendbuf,send_len),boost::bind(&Generator::write_handler,this,_1,_2));
 
 }
-void Generator::sendMap(std::string & rmap,std::string & npc_data, int type){
+void Generator::sendMap(std::string & rmap,std::string & npc_data, int map_type_id){
     std::string zero = "0";
     std::string use  = "use";
     std::string map_data = "map";
@@ -125,19 +148,43 @@ void Generator::sendMap(std::string & rmap,std::string & npc_data, int type){
     std::string code = "code";
     typedef std::pair<std::string,std::string> hash_pair;
     std::vector<hash_pair> vect;
-    boost::posix_time::ptime now=boost::posix_time::microsec_clock::universal_time();
-    int key = abs((now.time_of_day().total_microseconds()<<32)>>32);
     //std::cout << key << std::endl;
     //std::cout << (itr->data).length() << std::endl;
-    std::string _key = boost::lexical_cast<std::string>(key);
-    std::string _type = boost::lexical_cast<std::string>(type);
-    rc->sadd(_type,_key);
+
+    /**
+    *地图实例id(key)：ins_xxxxxxxxxx
+    */
+    std::stringstream ss_map_ins_key;
+    ss_map_ins_key << "ins_" << ++map_instance_id;
+
+    /**
+    *地图类型id(key)：map_type_xxxx
+    */
+    std::stringstream ss_map_type;
+    ss_map_type << "map_type_" << map_type_id;
+    /**
+    *向set中存放地图实例id
+    */
+    rc->sadd(ss_map_type.str(),ss_map_ins_key.str());
+    /**
+    *使用次数
+    */
     vect.push_back(hash_pair(use,zero));
+    /**
+    *验证码
+    */
     vect.push_back(hash_pair(code,boost::lexical_cast<std::string>(rand())));
+    /**
+    *地图数据
+    */
     vect.push_back(hash_pair(map_data,rmap));
+    /**
+    *npc数据
+    */
     vect.push_back(hash_pair(npc,npc_data));
-    rc->hmset(_key,vect);
-    //rc->hset(_key);
+
+    rc->hmset(ss_map_ins_key.str(),vect);
+
 }
 
 void Generator::write_handler(boost::system::error_code ec,std::size_t){
@@ -161,15 +208,23 @@ void Generator::reconnect(){
     psocket->read_some(boost::asio::buffer(&id,sizeof(int)));
     std::cout << "get id : " << id << std::endl;
 
+    map_instance_id =  id ;
+    map_instance_id =  map_instance_id << 32;
+
+    std::cout << "get map_instance_id : " << map_instance_id << std::endl;
+
     Json::Value root;
     Json::FastWriter writer;
 
     root["type"] = 1;
     root["id"]   = id;
     root["first"] = 0;
-    task_ok = writer.write(root);
-
-    readbuf = new char[1024];
+    std::string task_ok = writer.write(root);
+    unsigned int len = task_ok.length();
+    memcpy(sendbuf,&len,sizeof(unsigned int));
+    memcpy(sendbuf+sizeof(unsigned int),task_ok.c_str(),len);
+    send_len = len+sizeof(unsigned int);
+    psocket->async_send( boost::asio::buffer(sendbuf,send_len),boost::bind(&Generator::write_handler,this,_1,_2));
 
     (*this)();
 }
